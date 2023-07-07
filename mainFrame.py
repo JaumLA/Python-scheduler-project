@@ -179,11 +179,11 @@ class AddFrame():
     def _addTaskCommand(self, dayNum: int) -> None:
         """Take the entries of the form and pass it to 
         addTaks function of the GuiLogic class."""
-        GuiLogic.addTask(self.taskName, self.beginTime,
-                         self.endTime, dayNum)
-        self._resetEntries()
-        self.noteBook.destroyTasks(dayNum)
-        self.noteBook.fillTab(dayNum)
+        if(GuiLogic.addTask(self.taskName, self.beginTime,
+                         self.endTime, dayNum) == 0):
+            self._resetEntries()
+            self.noteBook.destroyTasks(dayNum)
+            self.noteBook.fillTab(dayNum)
 
     def _closeAddFrame(self) -> None:
         """When the add frame is closed, destroy it and reset the entries."""
