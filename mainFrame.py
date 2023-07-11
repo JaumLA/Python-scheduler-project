@@ -6,6 +6,8 @@ from tkinter import Toplevel
 from guiLogic import *
 from dayOfWeek import DayOfWeek
 
+import abc
+
 
 class MainFrame:
     """Has the main root TK and the main Frame."""
@@ -91,14 +93,14 @@ class NotebookDays(ttk.Notebook):
 
         # Keep only one instance open.
         if(self._addFrames.get(dayNum) == None):
-            addFrame = AddFrame(self, dayNum)
+            addFrame = AddFrame("+ add task", self, dayNum)
             addFrame.open(dayNum)
             self._addFrames.update({dayNum: addFrame})
         else:
             self._addFrames.get(dayNum).open(dayNum)
 
 
-class AddFrame():
+class FormFrame(metaclass=abc.ABCMeta):
     LABELNAMERELWIDTH = 0.5
     LABELNAMERELX = 0.5
     LABELNAMERELY = 0.15
@@ -112,25 +114,30 @@ class AddFrame():
     ENTRYRELWIDTH = 0.98
     ENTRYRELX = 0.01
 
-    def __init__(self, noteBook: NotebookDays, dayNum: int) -> None:
-        self.addFrame = None
+    def __init__(self, buttonName: str, noteBook: NotebookDays, dayNum: int, taskName="",
+                 beginTime="", endTime="", ) -> None:
+        self.frame = None
         self.noteBook = noteBook
         self.taskName = Variable()
+        self.taskName.set(taskName)
         self.beginTime = Variable()
+        self.beginTime.set(beginTime)
         self.endTime = Variable()
+        self.endTime.set(endTime)
+        self.buttonName = buttonName
         self.dayNum = dayNum
 
     def open(self, dayNum: int) -> None:
         """Create the Frame if it's None, else it's already open."""
-        if(self.addFrame == None):
+        if(self.frame == None):
             self._createFrame(dayNum)
 
     def _createFrame(self, dayNum: int) -> None:
         """Fill the Frame with the form widgets."""
-        self.addFrame = Toplevel(width=400, height=200, padx=4, pady=4)
-        self.addFrame.protocol('WM_DELETE_WINDOW', self._closeAddFrame)
+        self.frame = Toplevel(width=400, height=200, padx=4, pady=4)
+        self.frame.protocol('WM_DELETE_WINDOW', self._closeframeFrame)
 
-        nameLabel = ttk.Labelframe(self.addFrame, text="Task Name")
+        nameLabel = ttk.Labelframe(self.frame, text="Task Name")
         nameLabel.place(anchor='center', relwidth=self.LABELNAMERELWIDTH,
                         height=self.LABELHEIGHT, relx=self.LABELNAMERELX, rely=self.LABELNAMERELY)
 
@@ -139,7 +146,7 @@ class AddFrame():
         nameEntry.place(relheight=self.ENTRYRELHEIGHT,
                         relwidth=self.ENTRYRELWIDTH, relx=self.ENTRYRELX)
 
-        beginHourLabel = ttk.Labelframe(self.addFrame, text="Begin time")
+        beginHourLabel = ttk.Labelframe(self.frame, text="Begin time")
         beginHourLabel.place(anchor='w', relwidth=self.LABELRELWIDTH,
                              height=self.LABELHEIGHT, relx=self.LABELRELX, rely=self.LABELRELY)
 
@@ -149,7 +156,7 @@ class AddFrame():
         beginHourEntry.place(relheight=self.ENTRYRELHEIGHT,
                              relwidth=self.ENTRYRELWIDTH, relx=self.ENTRYRELX)
 
-        endHourLabel = ttk.Labelframe(self.addFrame, text="End time")
+        endHourLabel = ttk.Labelframe(self.frame, text="End time")
         endHourLabel.place(anchor='e', relwidth=self.LABELRELWIDTH,
                            height=self.LABELHEIGHT, relx=self.LABELRELX * 4, rely=self.LABELRELY)
 
@@ -159,9 +166,9 @@ class AddFrame():
         endHourEntry.place(relheight=self.ENTRYRELHEIGHT,
                            relwidth=self.ENTRYRELWIDTH, relx=self.ENTRYRELX)
 
-        addButton = ttk.Button(self.addFrame, name="addButton", text="+ add task",
-                               command=lambda: self._addTaskCommand(dayNum))
-        addButton.place(relx=1, rely=1, anchor="se")
+        button = ttk.Button(self.frame, name="button", text=self.buttonName,
+                            command=lambda: self._buttonCommand(dayNum))
+        button.place(relx=1, rely=1, anchor="se")
 
     def _validateTime(self, d, p: str, S):
         """Accept only numbers, the delete operation and the char ':'"""
@@ -176,21 +183,17 @@ class AddFrame():
             result = True
         return result
 
-    def _addTaskCommand(self, dayNum: int) -> None:
+    @abc.abstractmethod
+    def _buttonCommand(self, dayNum: int) -> None:
         """Take the entries of the form and pass it to 
-        addTaks function of the GuiLogic class."""
-        if(GuiLogic.addTask(self.taskName, self.beginTime,
-                         self.endTime, dayNum) == 0):
-            self._resetEntries()
-            self.noteBook.destroyTasks(dayNum)
-            self.noteBook.fillTab(dayNum)
+        frameTaks function of the GuiLogic class."""
 
-    def _closeAddFrame(self) -> None:
-        """When the add frame is closed, destroy it and reset the entries."""
-        if(self.addFrame == None):
+    def _closeframeFrame(self) -> None:
+        """When the frame is closed, destroy it and reset the entries."""
+        if(self.frame == None):
             return
-        self.addFrame.destroy()
-        self.addFrame = None
+        self.frame.destroy()
+        self.frame = None
         self._resetEntries()
 
     def _resetEntries(self):
@@ -198,6 +201,19 @@ class AddFrame():
         self.endTime.set('')
         self.taskName.set('')
 
+
+class AddFrame(FormFrame):
+    def _buttonCommand(self, dayNum: int) -> None:
+        if(GuiLogic.addTask(self.taskName, self.beginTime,
+                            self.endTime, dayNum) == 0):
+            self._resetEntries()
+            self.noteBook.destroyTasks(dayNum)
+            self.noteBook.fillTab(dayNum)
+
+
+class UpdateFrame(FormFrame):
+    def _buttonCommand(self, dayNum: int) -> None:
+        pass
 
 class TaskLabel(ttk.LabelFrame):
 
@@ -222,6 +238,7 @@ class TaskLabel(ttk.LabelFrame):
             self, text=f"{task['begin']} - {task['end']}", anchor="w")
         l.place(relx=0, rely=0)
 
+        self._createTaskConfigButton(task, dayNum)
         self._createRemoveButton(task, dayNum)
 
     def _createRemoveButton(self, task: dict, dayNum: int):
@@ -236,6 +253,7 @@ class TaskLabel(ttk.LabelFrame):
         self._notebook.destroyTasks(dayNum)
         self._notebook.fillTab(dayNum)
 
-    def _createMoveButton(self):
-        moveButton = ttk.Label(self, name="moveLabel", text="MOVE")
-        moveButton.place(relx=0.90, relwidth=0.05, relheight=1)
+    def _createTaskConfigButton(self, task: dict, dayNum: int):
+        button = ttk.Button(self, name="taskConfigButton", text="MOVE")
+        button.place(relx=0.90, relwidth=0.05, relheight=1)
+        button.config(command=lambda: task)
