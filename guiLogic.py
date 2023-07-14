@@ -4,8 +4,11 @@ from dbAccess import Database
 
 from tkinter import Variable
 
+from typing import Union
+
 TIMERANGEERROR = """The minute must be in range [0-59] inclusive and the hour must be in range [0-24] inclusive."""
 GENERALERROR = "Something went wrong."
+
 
 class GuiLogic:
 
@@ -28,36 +31,14 @@ class GuiLogic:
             return (0, 0, 0, 0)
 
     @classmethod
-    def addTask(cls, tname: Variable, beginTimeStr: Variable, endTimeStr: Variable, dayNum: int) -> int:
+    def addTask(cls, tname: Variable, beginTimeVar: Variable, endTimeVar: Variable, dayNum: int) -> int:
         """Take the name, begin time and end time as str value.\n
         Return -1 if the task isn't added, 0 otherwise."""
 
-        try:
-            beginSplit = beginTimeStr.get().split(":")
-            if(len(beginSplit) == 1 or beginSplit[1] == ''):
-                beginMinute = 0
-            else:
-                beginMinute = int(beginSplit[1])
-            beginTime = time(int(beginSplit[0]), beginMinute)
-        except ValueError:
-            print(TIMERANGEERROR)
-            return -1
-        except BaseException:
-            print(GENERALERROR)    
-            return -1
-        
-        try:
-            endSplit = endTimeStr.get().split(":")
-            if(len(endSplit) == 1 or endSplit[1] == ''):
-                endMinute = 0
-            else:
-                endMinute = int(endSplit[1])
-            endTime = time(int(endSplit[0]), endMinute)
-        except ValueError:
-            print(TIMERANGEERROR)
-            return -1
-        except BaseException:
-            print(GENERALERROR)    
+        beginTime = cls.variableToTime(beginTimeVar.get())
+        endTime = cls.variableToTime(endTimeVar.get())
+
+        if(beginTime == None or endTime == None):
             return -1
 
         task = dict(
@@ -69,9 +50,38 @@ class GuiLogic:
         cls.db.addTask(task, dayNum)
         return 0
 
+    @staticmethod
+    def variableToTime(strTime: str) -> Union[time, None]:
+        try:
+            timeSplit = strTime.split(":")
+            if(len(timeSplit) == 1 or timeSplit[1] == ''):
+                timeMinute = 0
+            else:
+                timeMinute = int(timeSplit[1])
+            convertedTime = time(int(timeSplit[0]), timeMinute)
+            return convertedTime
+        except ValueError:
+            print(TIMERANGEERROR)
+            return None
+        except BaseException:
+            print(GENERALERROR)
+            return None
+
     @classmethod
-    def changeTaskName(cls, newName: str):
-        pass
+    def changeTaskInfo(cls, newNameVar: Variable, newBeginVar: Variable, newEndVar: Variable, oldTask: dict, dayNum: int):
+        newName = newNameVar.get()
+        newBeginTime = cls.variableToTime(newBeginVar.get())
+        newEndTime = cls.variableToTime(newEndVar.get())
+        if(newBeginTime == None or newEndTime == None):
+            return -1
+
+        newTask = dict(
+            id=oldTask["id"],
+            name=newName,
+            begin=newBeginTime,
+            end=newEndTime
+        )
+        cls.db.updateTask(newTask, dayNum)
 
     @classmethod
     def removeTask(cls, task: dict, dayNum: int):
