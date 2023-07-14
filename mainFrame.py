@@ -88,6 +88,10 @@ class NotebookDays(ttk.Notebook):
                 continue
             widget.destroy()
 
+    def reloadDayTasks(self, dayNum):
+        self.destroyTasks(dayNum)
+        self.fillTab(dayNum)
+
     def _addFrameCommand(self, dayNum: int) -> None:
         """The command to open the frame to add tasks."""
 
@@ -186,7 +190,7 @@ class FormFrame(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def _buttonCommand(self, dayNum: int) -> None:
         """Take the entries of the form and pass it to 
-        frameTaks function of the GuiLogic class."""
+        frameTasks function of the GuiLogic class."""
 
     def _closeframeFrame(self) -> None:
         """When the frame is closed, destroy it and reset the entries."""
@@ -212,8 +216,16 @@ class AddFrame(FormFrame):
 
 
 class UpdateFrame(FormFrame):
+    def __init__(self, buttonName: str, noteBook: NotebookDays, task: dict,dayNum: int, taskName="", beginTime="", endTime="") -> None:
+        super().__init__(buttonName, noteBook, dayNum, taskName, beginTime, endTime)
+        self.oldTask = task
+    
     def _buttonCommand(self, dayNum: int) -> None:
-        pass
+        if(GuiLogic.changeTaskInfo(
+            self.taskName, self.beginTime, self.endTime, self.oldTask, dayNum) == -1):
+            return
+        self.noteBook.reloadDayTasks(dayNum)
+
 
 class TaskLabel(ttk.LabelFrame):
 
@@ -256,4 +268,6 @@ class TaskLabel(ttk.LabelFrame):
     def _createTaskConfigButton(self, task: dict, dayNum: int):
         button = ttk.Button(self, name="taskConfigButton", text="MOVE")
         button.place(relx=0.90, relwidth=0.05, relheight=1)
-        button.config(command=lambda: task)
+        updateFrame = UpdateFrame(
+            "Update", self._notebook, task, dayNum, task["name"], task["begin"], task["end"])
+        button.config(command=lambda: updateFrame.open(dayNum))
