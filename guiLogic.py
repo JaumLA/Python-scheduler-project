@@ -12,12 +12,16 @@ GENERALERROR = "Something went wrong."
 
 class GuiLogic:
 
-    db = Database()
+    _schedule = Database.getTask()
 
     @classmethod
     def getTasksDay(cls, dayNum: int) -> list:
-        daySchedule = cls.db.getDaySchedule(dayNum)
+        daySchedule = cls._schedule[dayNum]
         return sorted(daySchedule, key=lambda x: (cls._createTuple(x)))
+
+    @classmethod
+    def getSchedule(cls):
+        return cls._schedule
 
     @staticmethod
     def _createTuple(val):
@@ -47,7 +51,7 @@ class GuiLogic:
             begin=beginTime,
             end=endTime
         )
-        cls.db.addTask(task, dayNum)
+        cls._schedule[dayNum].append(task)
         return 0
 
     @staticmethod
@@ -81,16 +85,47 @@ class GuiLogic:
             begin=newBeginTime,
             end=newEndTime
         )
-        cls.db.updateTask(newTask, dayNum)
+
+        pos = cls.findTaskPosAtWeekday(oldTask, dayNum)
+        if(pos == -1):
+            return -1
+        cls._schedule[dayNum][pos] = newTask
+
+    @classmethod
+    def findTaskPos(cls, taskToFind: dict):
+        pos = None
+        for daySchedule in cls._schedule:
+            pos = next((i for i, task in enumerate(daySchedule)
+                       if task["id"] == taskToFind["id"]), None)
+            if(pos != None):
+                return daySchedule[pos]
+
+        return -1
+
+    @classmethod
+    def findTaskPosAtWeekday(cls, taskToFind, dayNum):
+        daySchedule = cls._schedule[dayNum]
+        pos = next((i for i, task in enumerate(daySchedule)
+                    if task["id"] == taskToFind["id"]), None)
+        if(pos == None):
+            return -1
+        else:
+            return pos
 
     @classmethod
     def removeTask(cls, task: dict, dayNum: int):
         """Given the task and the number of the weekday, delete the task."""
-        cls.db.removeTask(task, dayNum)
+        try:
+            cls._schedule[dayNum].remove(task)
+        except ValueError:
+            print("Task already removed.")
+        except BaseException:
+            print(GENERALERROR)
+            return -1
 
     @classmethod
     def saveFile(cls):
-        cls.db.writeToFile()
+        Database.writeToFile(cls._schedule)
 
     @staticmethod
     def moveTask():

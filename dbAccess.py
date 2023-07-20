@@ -6,43 +6,32 @@ GENERALERROR = "Something went wrong."
 
 class Database:
 
-    def __init__(self):
-        self.schedule = dict()
+    @staticmethod
+    def getTask() -> dict:
+        schedule = dict()
         try:
             fd = os.open(path="./testTestData.json", flags=os.O_CREAT|os.O_RDONLY)
             with os.fdopen(fd, "rb") as seriaBin:
                 dnk = pickle.load(seriaBin)
                 for x in DayOfWeek:
-                    self.schedule[x.value] = dnk[x.value]
+                    schedule[x.value] = dnk[x.value]
         except PermissionError as err:
             print(err.strerror)
         except EOFError:
             for x in DayOfWeek:
-                self.schedule[x.value] = []
+                schedule[x.value] = []
         except BaseException:
             print(GENERALERROR)
             for x in DayOfWeek:
-                self.schedule[x.value] = []
+                schedule[x.value] = []
+        finally:
+            return schedule
 
-    def getDaySchedule(self, dayNum: int):
-        return self.schedule[dayNum]
-
-    def addTask(self, task: dict, dayNum: int):
-        self.schedule[dayNum].append(task)
-
-    def removeTask(self, task: dict, day: int):
-        try:
-            self.schedule[day].remove(task)
-        except ValueError:
-            print("Task already removed.")
-        except BaseException:
-            print(GENERALERROR)    
-            return -1
-
-    def writeToFile(self):
+    @staticmethod
+    def writeToFile(schedule: dict):
         try:
             with open(file="./testTestData.json", mode='wb') as file:
-                pickle.dump(self.schedule, file=file)
+                pickle.dump(schedule, file=file)
         except PermissionError as err:
             print(err.strerror)
         except EOFError:
