@@ -5,8 +5,11 @@ from tkinter import Toplevel
 
 from guiLogic import *
 from dayOfWeek import DayOfWeek
+from timeInfo import ActualTaskFrame
 
 import abc
+
+from multiprocessing import Process
 
 
 class MainFrame:
@@ -15,8 +18,8 @@ class MainFrame:
     def __init__(self) -> None:
         self._createRoot()
         self._createMainFrame()
-        self._root.mainloop()
-        pass
+        self.task = self._createActualTaskFrame()
+        self.executeLoop()
 
     def _createRoot(self) -> None:
         self._root = Tk()
@@ -25,6 +28,11 @@ class MainFrame:
         self._root.minsize(width=500, height=400)
         self._root.columnconfigure(0, weight=1)
         self._root.rowconfigure(0, weight=1)
+        self._root.protocol('WM_DELETE_WINDOW', self._closeApp)
+
+    def _closeApp(self):
+        self._actualFrameProcess.terminate()
+        self._root.destroy()
 
     def _createMainFrame(self) -> None:
         self._mainFrame = ttk.Frame(self._root)
@@ -32,6 +40,17 @@ class MainFrame:
         self._mainFrame.grid_columnconfigure(index=0, weight=1)
         self._mainFrame.grid_rowconfigure(index=0, weight=1)
         self._noteDays = NotebookDays(self._mainFrame)
+
+    def _createActualTaskFrame(self) -> None:
+        self.actualFrame = ActualTaskFrame(self._mainFrame)
+        labelFrame = self.actualFrame.getLabelFrame()
+        labelFrame.place(relwidth=0.7, relheight=0.09,
+                         relx=0.07, rely=0.99, anchor="sw")
+
+    def executeLoop(self):
+        self._actualFrameProcess = Process(target=self.actualFrame.loop)
+        self._actualFrameProcess.start()
+        self._root.mainloop()
 
 
 class NotebookDays(ttk.Notebook):
@@ -46,10 +65,8 @@ class NotebookDays(ttk.Notebook):
     def _createNoteDays(self) -> None:
         """Create the Notebook ttk and add the 7 tabs and its
         frames to hold the tasks."""
-        self.config(width=600, height=400, padding="5")
-        self.grid(sticky="NESW")
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
+        self.config(padding="5")
+        self.place(relheight=0.9, relwidth=1)
 
         days = DayOfWeek.getDaysName()
         for day in days:
@@ -216,13 +233,13 @@ class AddFrame(FormFrame):
 
 
 class UpdateFrame(FormFrame):
-    def __init__(self, buttonName: str, noteBook: NotebookDays, task: dict,dayNum: int, taskName="", beginTime="", endTime="") -> None:
+    def __init__(self, buttonName: str, noteBook: NotebookDays, task: dict, dayNum: int, taskName="", beginTime="", endTime="") -> None:
         super().__init__(buttonName, noteBook, dayNum, taskName, beginTime, endTime)
         self.oldTask = task
-    
+
     def _buttonCommand(self, dayNum: int) -> None:
         if(GuiLogic.changeTaskInfo(
-            self.taskName, self.beginTime, self.endTime, self.oldTask, dayNum) == -1):
+                self.taskName, self.beginTime, self.endTime, self.oldTask, dayNum) == -1):
             return
         self.noteBook.reloadDayTasks(dayNum)
 
