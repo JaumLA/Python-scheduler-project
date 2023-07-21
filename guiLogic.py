@@ -41,7 +41,6 @@ class GuiLogic:
 
         beginTime = cls.variableToTime(beginTimeVar.get())
         endTime = cls.variableToTime(endTimeVar.get())
-
         if(beginTime == None or endTime == None):
             return -1
 
@@ -62,7 +61,7 @@ class GuiLogic:
                 timeMinute = 0
             else:
                 timeMinute = int(timeSplit[1])
-            convertedTime = time(int(timeSplit[0]), timeMinute)
+            convertedTime = time(hour=int(timeSplit[0]), minute=timeMinute)
             return convertedTime
         except ValueError:
             print(TIMERANGEERROR)
