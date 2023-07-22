@@ -9,8 +9,7 @@ from timeInfo import ActualTaskFrame
 
 import abc
 
-from multiprocessing import Process
-
+from threading import Thread
 
 class MainFrame:
     """Has the main root TK and the main Frame."""
@@ -18,7 +17,8 @@ class MainFrame:
     def __init__(self) -> None:
         self._createRoot()
         self._createMainFrame()
-        self.task = self._createActualTaskFrame()
+        self._actualFrame = ActualTaskFrame(self._mainFrame)
+        self.task = self._placeActualTaskFrame()
         self.executeLoop()
 
     def _createRoot(self) -> None:
@@ -31,8 +31,10 @@ class MainFrame:
         self._root.protocol('WM_DELETE_WINDOW', self._closeApp)
 
     def _closeApp(self):
-        self._actualFrameProcess.terminate()
+        self._actualFrame.stop()
+        self._actualFrameThread.join()
         self._root.destroy()
+        GuiLogic.saveFile()
 
     def _createMainFrame(self) -> None:
         self._mainFrame = ttk.Frame(self._root)
@@ -41,15 +43,14 @@ class MainFrame:
         self._mainFrame.grid_rowconfigure(index=0, weight=1)
         self._noteDays = NotebookDays(self._mainFrame)
 
-    def _createActualTaskFrame(self) -> None:
-        self.actualFrame = ActualTaskFrame(self._mainFrame)
-        labelFrame = self.actualFrame.getLabelFrame()
-        labelFrame.place(relwidth=0.7, relheight=0.09,
+    def _placeActualTaskFrame(self) -> None:
+        labelFrame = self._actualFrame.getLabelFrame()
+        labelFrame.place(relwidth=0.9, relheight=0.09,
                          relx=0.07, rely=0.99, anchor="sw")
 
     def executeLoop(self):
-        self._actualFrameProcess = Process(target=self.actualFrame.loop)
-        self._actualFrameProcess.start()
+        self._actualFrameThread = Thread(target=self._actualFrame.loop)
+        self._actualFrameThread.start()
         self._root.mainloop()
 
 
